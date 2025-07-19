@@ -51,6 +51,11 @@
             border-radius: 12px;
             margin-bottom: 1rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            height: 400px;
+            max-height: 400px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
         .message {
@@ -134,27 +139,42 @@
 
         .typing-indicator {
             display: none;
-            padding: 0.75rem 1rem;
-            background: #f1f1f1;
-            border-radius: 8px;
             margin-bottom: 1rem;
-            color: #666;
+            margin-right: auto;
+            background: #f1f1f1;
+            border-radius: 18px;
+            padding: 0.5rem 1.2rem;
+            width: fit-content;
+            min-width: 48px;
+            min-height: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            position: relative;
         }
-
         .typing-dots {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100%;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background: #bbb;
+            border-radius: 50%;
             display: inline-block;
+            opacity: 0.7;
+            animation: typing-bounce 1.2s infinite both;
         }
-
-        .typing-dots::after {
-            content: '';
-            animation: typing 1.5s infinite;
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
         }
-
-        @keyframes typing {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing-bounce {
+            0%, 80%, 100% { transform: scale(0.7); opacity: 0.7; }
+            40% { transform: scale(1.2); opacity: 1; }
         }
 
         @media (max-width: 768px) {
@@ -164,6 +184,10 @@
             
             .message {
                 max-width: 90%;
+            }
+            .chat-messages {
+                height: 250px;
+                max-height: 250px;
             }
         }
     </style>
@@ -184,9 +208,7 @@
             </div>
         </div>
 
-        <div class="typing-indicator" id="typingIndicator">
-            <span class="typing-dots">Assistant is typing</span>
-        </div>
+        <!-- Typing indicator is now dynamically inserted by JS -->
 
         <div class="input-container">
             <input 
@@ -232,11 +254,33 @@
 
         // Add message to chat
         function addMessage(message, isUser = false) {
+            removeTypingIndicator(); // Always remove before adding a new message
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
             messageDiv.textContent = message;
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Show typing indicator under last message
+        function showTypingIndicator() {
+            removeTypingIndicator();
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <span class="typing-dots">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </span>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) typingDiv.remove();
         }
 
         // Send message
@@ -248,8 +292,8 @@
             addMessage(message, true);
             chatInput.value = '';
 
-            // Show typing indicator
-            typingIndicator.style.display = 'block';
+            // Show typing indicator under last message
+            showTypingIndicator();
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             try {
@@ -264,7 +308,7 @@
                 const data = await response.json();
 
                 // Hide typing indicator
-                typingIndicator.style.display = 'none';
+                removeTypingIndicator();
 
                 if (data.error) {
                     addMessage(`Error: ${data.error}`);
@@ -272,7 +316,7 @@
                     addMessage(data.response);
                 }
             } catch (error) {
-                typingIndicator.style.display = 'none';
+                removeTypingIndicator();
                 addMessage(`Error: ${error.message}`);
             }
         }
