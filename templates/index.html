@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mistral Chatbot (Cursor Style)</title>
+    <title>Text AI Assistant</title>
     <style>
         html, body {
             height: 100%;
@@ -29,6 +29,7 @@
         .header h1 {
             font-size: 1.5rem;
             font-weight: 600;
+            margin: 0;
         }
         .main-layout {
             flex: 1;
@@ -41,18 +42,42 @@
             flex: 1 1 0;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
             background: rgba(255,255,255,0.95);
             border-radius: 0 0 0 24px;
             margin: 2rem 0 2rem 2rem;
             box-shadow: 0 8px 32px rgba(0,0,0,0.08);
             min-width: 0;
+            overflow: hidden;
         }
-        .center-panel-inner {
-            width: 100%;
-            max-width: 600px;
+        .content-area {
+            flex: 1;
             padding: 2rem;
+            overflow-y: auto;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        .content-area textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 1rem;
+            background: transparent;
+            resize: none;
+            box-sizing: border-box;
+        }
+        .generated-content {
+            white-space: pre-wrap;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007AFF;
         }
         .right-panel {
             width: 380px;
@@ -93,13 +118,46 @@
             color: #333;
             margin-right: auto;
         }
-        .input-container {
-            display: flex;
-            gap: 0.5rem;
+        .system-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            margin-right: auto;
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+        .input-section {
             background: none;
             padding: 1rem;
             border-radius: 0 0 12px 12px;
             box-shadow: none;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .mode-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e1e1e1;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+        }
+        .mode-btn.active {
+            background: #007AFF;
+            color: white;
+            border-color: #007AFF;
+        }
+        .mode-btn:hover:not(.active) {
+            background: #f5f5f5;
+        }
+        .input-container {
+            display: flex;
+            gap: 0.5rem;
         }
         .chat-input {
             flex: 1;
@@ -176,6 +234,30 @@
             0%, 80%, 100% { transform: scale(0.7); opacity: 0.7; }
             40% { transform: scale(1.2); opacity: 1; }
         }
+        .welcome-screen {
+            text-align: center;
+            color: #666;
+            margin-top: 4rem;
+        }
+        .welcome-screen h2 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        .generation-indicator {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(0, 122, 255, 0.1);
+            color: #007AFF;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
         @media (max-width: 1100px) {
             .main-layout {
                 flex-direction: column;
@@ -198,47 +280,50 @@
 </head>
 <body>
     <div class="header">
-        <h1>🤖 Mistral Chatbot</h1>
+        <h1>✍️ Text AI Assistant</h1>
     </div>
     <div class="main-layout">
         <div class="center-content">
-            <div class="center-panel-inner" id="centerPanel">
-                <!-- Dynamic content goes here -->
-                <div id="modeContent">
-                    <div id="welcome" style="display: block; text-align: center; color: #444;">
-                        <h2>Welcome!</h2>
-                        <p>This is the main content area.<br>Use the chat on the right to interact with the AI, or select another mode below.</p>
-                    </div>
-                    <form id="center-form" style="margin-top:2rem;">
-                        <select id="action" name="action">
-                            <option value="generate">Generate Text</option>
-                            <option value="edit">Edit Text</option>
-                            <option value="summarize">Summarize Text</option>
-                        </select>
-                        <textarea id="context" placeholder="Paste text to edit or summarize (optional)" rows="5"></textarea>
-                        <button type="button" onclick="switchToChatMode()">Chat Mode Only</button>
-                    </form>
+            <div class="content-area" id="contentArea">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <h2>Welcome to your AI Text Assistant</h2>
+                    <p>Choose a mode from the panel on the right to get started:</p>
+                    <ul style="text-align: left; max-width: 400px; margin: 2rem auto;">
+                        <li><strong>Write:</strong> Generate new content from scratch</li>
+                        <li><strong>Edit:</strong> Modify and improve existing text</li>
+                        <li><strong>Chat:</strong> Have a conversation with the AI</li>
+                    </ul>
+                </div>
+                <div id="generationIndicator" class="generation-indicator" style="display: none;">
+                    Generating...
                 </div>
             </div>
         </div>
         <div class="right-panel">
             <div class="status" id="status">Loading model...</div>
             <div class="chat-messages" id="chatMessages">
-                <div class="message bot-message">
-                    Hello! I'm your AI assistant. How can I help you today?
+                <div class="message system-message">
+                    Select a mode below to get started
                 </div>
             </div>
-            <div class="input-container">
-                <input 
-                    type="text" 
-                    class="chat-input" 
-                    id="chatInput" 
-                    placeholder="Type your message here..."
-                    disabled
-                >
-                <button class="send-button" id="sendButton" disabled>
-                    Send
-                </button>
+            <div class="input-section">
+                <div class="mode-selector">
+                    <button class="mode-btn" id="writeBtn" onclick="setMode('write')">Write</button>
+                    <button class="mode-btn" id="editBtn" onclick="setMode('edit')">Edit</button>
+                    <button class="mode-btn active" id="chatBtn" onclick="setMode('chat')">Chat</button>
+                </div>
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Type your message here..."
+                        disabled
+                    >
+                    <button class="send-button" id="sendButton" disabled>
+                        Send
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -247,7 +332,12 @@
         const chatInput = document.getElementById('chatInput');
         const sendButton = document.getElementById('sendButton');
         const status = document.getElementById('status');
-        let chatModeOnly = false;
+        const contentArea = document.getElementById('contentArea');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const generationIndicator = document.getElementById('generationIndicator');
+        
+        let currentMode = 'chat';
+        let contentText = '';
 
         // Check model status
         async function checkStatus() {
@@ -255,7 +345,7 @@
                 const response = await fetch('/status');
                 const data = await response.json();
                 if (data.loaded) {
-                    status.textContent = 'Model loaded! Ready to chat.';
+                    status.textContent = 'Model ready';
                     status.style.color = '#4CAF50';
                     chatInput.disabled = false;
                     sendButton.disabled = false;
@@ -269,17 +359,82 @@
             }
         }
 
+        // Set mode
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(mode + 'Btn').classList.add('active');
+            
+            // Update placeholder and content area
+            if (mode === 'write') {
+                chatInput.placeholder = 'Describe what you want to write...';
+                setupWriteMode();
+            } else if (mode === 'edit') {
+                chatInput.placeholder = 'Describe how to edit the text...';
+                setupEditMode();
+            } else {
+                chatInput.placeholder = 'Type your message here...';
+                setupChatMode();
+            }
+            
+            // Clear chat if switching from chat mode
+            if (mode !== 'chat') {
+                const systemMsg = document.querySelector('.system-message');
+                chatMessages.innerHTML = '';
+                chatMessages.appendChild(systemMsg);
+                systemMsg.textContent = `${mode.charAt(0).toUpperCase() + mode.slice(1)} mode active`;
+            } else {
+                setupChatMode();
+            }
+        }
+
+        function setupWriteMode() {
+            contentArea.innerHTML = `
+                <div style="height: 100%; position: relative;">
+                    <div id="generationIndicator" class="generation-indicator" style="display: none;">
+                        Generating...
+                    </div>
+                    <div id="writeContent" style="height: 100%; padding: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; white-space: pre-wrap; overflow-y: auto;"></div>
+                </div>
+            `;
+        }
+
+        function setupEditMode() {
+            contentArea.innerHTML = `
+                <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div id="generationIndicator" class="generation-indicator" style="display: none;">
+                        Processing...
+                    </div>
+                    <div style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">
+                        Paste or type your text below, then use the input field to describe your edits:
+                    </div>
+                    <textarea id="editTextArea" placeholder="Paste your text here to edit..." style="flex: 1; border: 1px solid #e1e1e1; border-radius: 8px; padding: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 1rem; line-height: 1.5; resize: none; outline: none;"></textarea>
+                </div>
+            `;
+        }
+
+        function setupChatMode() {
+            contentArea.innerHTML = `
+                <div class="welcome-screen">
+                    <h2>Chat Mode</h2>
+                    <p>Have a conversation with your AI assistant. Your chat appears in the panel on the right.</p>
+                </div>
+            `;
+        }
+
         // Add message to chat
-        function addMessage(message, isUser = false) {
+        function addMessage(message, isUser = false, isSystem = false) {
             removeTypingIndicator();
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.className = `message ${isUser ? 'user-message' : isSystem ? 'system-message' : 'bot-message'}`;
             messageDiv.textContent = message;
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // Show typing indicator under last message
+        // Show typing indicator
         function showTypingIndicator() {
             removeTypingIndicator();
             const typingDiv = document.createElement('div');
@@ -295,6 +450,7 @@
             chatMessages.appendChild(typingDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
+
         function removeTypingIndicator() {
             const typingDiv = document.getElementById('typingIndicator');
             if (typingDiv) typingDiv.remove();
@@ -304,20 +460,117 @@
         async function sendMessage() {
             const message = chatInput.value.trim();
             if (!message) return;
+            
+            const requestData = { message: message };
+            
+            if (currentMode === 'write') {
+                await handleWriteMode(message);
+            } else if (currentMode === 'edit') {
+                await handleEditMode(message);
+            } else {
+                await handleChatMode(message);
+            }
+        }
+
+        async function handleWriteMode(message) {
             addMessage(message, true);
             chatInput.value = '';
-            showTypingIndicator();
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Show generation indicator in content area
+            const indicator = document.getElementById('generationIndicator');
+            if (indicator) indicator.style.display = 'block';
+            
+            addMessage('Generating content...', false, true);
+            
             try {
                 const response = await fetch('/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message: message })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, action: 'generate' })
                 });
+                
+                const data = await response.json();
+                
+                if (indicator) indicator.style.display = 'none';
+                
+                if (data.error) {
+                    addMessage(`Error: ${data.error}`, false, true);
+                } else {
+                    // Display content in center area
+                    const writeContent = document.getElementById('writeContent');
+                    if (writeContent) {
+                        writeContent.textContent = data.response;
+                    }
+                    addMessage('Content generated successfully!', false, true);
+                }
+            } catch (error) {
+                if (indicator) indicator.style.display = 'none';
+                addMessage(`Error: ${error.message}`, false, true);
+            }
+        }
+
+        async function handleEditMode(message) {
+            const textArea = document.getElementById('editTextArea');
+            const textToEdit = textArea ? textArea.value.trim() : '';
+            
+            if (!textToEdit) {
+                addMessage('Please paste some text to edit first.', false, true);
+                return;
+            }
+            
+            addMessage(message, true);
+            chatInput.value = '';
+            
+            const indicator = document.getElementById('generationIndicator');
+            if (indicator) indicator.style.display = 'block';
+            
+            addMessage('Processing edits...', false, true);
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: message, 
+                        action: 'edit', 
+                        context: textToEdit 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (indicator) indicator.style.display = 'none';
+                
+                if (data.error) {
+                    addMessage(`Error: ${data.error}`, false, true);
+                } else {
+                    // Update the text area with edited content
+                    if (textArea) {
+                        textArea.value = data.response;
+                    }
+                    addMessage('Text edited successfully!', false, true);
+                }
+            } catch (error) {
+                if (indicator) indicator.style.display = 'none';
+                addMessage(`Error: ${error.message}`, false, true);
+            }
+        }
+
+        async function handleChatMode(message) {
+            addMessage(message, true);
+            chatInput.value = '';
+            showTypingIndicator();
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, action: 'generate' })
+                });
+                
                 const data = await response.json();
                 removeTypingIndicator();
+                
                 if (data.error) {
                     addMessage(`Error: ${data.error}`);
                 } else {
@@ -336,14 +589,9 @@
             }
         });
 
-        // Center panel mode switching
-        function switchToChatMode() {
-            chatModeOnly = true;
-            document.getElementById('centerPanel').innerHTML = `<div style='text-align:center; color:#444; margin-top:4rem;'><h2>Chat Mode</h2><p>Use the chat panel on the right to interact with the AI.</p></div>`;
-        }
-
-        // Start checking status
+        // Start checking status and initialize
         checkStatus();
+        setMode('chat'); // Initialize with chat mode
     </script>
 </body>
 </html>
