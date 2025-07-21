@@ -116,7 +116,13 @@ def chat():
     try:
         # Improved prompt formatting
         if action == 'edit' and context:
-            prompt = f"<|im_start|>user\nEdit the following text: {context}\n\nInstruction: {user_message}<|im_end|>\n<|im_start|>assistant\n"
+            prompt = (
+                "<|im_start|>user\n"
+                "You are an AI editor. Edit the following text according to the instruction, "
+                "but keep all other content unchanged unless the instruction says to remove or replace it. "
+                "If the instruction is to continue or add, append your response to the end.\n\n"
+                f"Text:\n{context}\n\nInstruction: {user_message}<|im_end|>\n<|im_start|>assistant\n"
+            )
         elif action == 'summarize' and context:
             prompt = f"<|im_start|>user\nSummarize this text: {context}<|im_end|>\n<|im_start|>assistant\n"
         else:
@@ -171,66 +177,59 @@ def status():
     """Check model loading status"""
     return jsonify({'loaded': model_loaded})
 
-# In-memory storage for projects (in production, use a database)
-projects = {}
-project_counter = 0
-
-@app.route('/projects', methods=['GET'])
-def get_projects():
-    """Get all projects"""
-    return jsonify({'projects': list(projects.values())})
-
-@app.route('/projects', methods=['POST'])
-def create_project():
-    """Create a new project"""
-    global project_counter
-    data = request.get_json()
-    
-    project_counter += 1
-    project_id = f"project_{project_counter}"
-    
-    project = {
-        'id': project_id,
-        'title': data.get('title', f'Project {project_counter}'),
-        'content': data.get('content', ''),
+# In-memory storage for a single project
+projects = {
+    'project_1': {
+        'id': 'project_1',
+        'title': 'Project 1',
+        'content': '',
         'created_at': time.time(),
         'updated_at': time.time()
     }
-    
-    projects[project_id] = project
-    return jsonify({'project': project})
+}
 
-@app.route('/projects/<project_id>', methods=['GET'])
-def get_project(project_id):
-    """Get a specific project"""
-    if project_id not in projects:
-        return jsonify({'error': 'Project not found'}), 404
-    return jsonify({'project': projects[project_id]})
+@app.route('/projects', methods=['GET'])
+def get_projects():
+    """Get the single project"""
+    return jsonify({'projects': [projects['project_1']]})
 
-@app.route('/projects/<project_id>', methods=['PUT'])
-def update_project(project_id):
-    """Update a project"""
-    if project_id not in projects:
-        return jsonify({'error': 'Project not found'}), 404
-    
-    data = request.get_json()
-    project = projects[project_id]
-    
+@app.route('/projects', methods=['POST'])
+def create_project():
+    """Always return/create the single project_1"""
+    data = request.get_json() or {}
+    project = projects['project_1']
+    # Optionally update title/content if provided
     if 'title' in data:
         project['title'] = data['title']
     if 'content' in data:
         project['content'] = data['content']
-    
+    project['updated_at'] = time.time()
+    return jsonify({'project': project})
+
+@app.route('/projects/<project_id>', methods=['GET'])
+def get_project(project_id):
+    """Get the single project_1 regardless of id"""
+    project = projects['project_1']
+    return jsonify({'project': project})
+
+@app.route('/projects/<project_id>', methods=['PUT'])
+def update_project(project_id):
+    """Update the single project_1 regardless of id"""
+    data = request.get_json() or {}
+    project = projects['project_1']
+    if 'title' in data:
+        project['title'] = data['title']
+    if 'content' in data:
+        project['content'] = data['content']
     project['updated_at'] = time.time()
     return jsonify({'project': project})
 
 @app.route('/projects/<project_id>', methods=['DELETE'])
 def delete_project(project_id):
-    """Delete a project"""
-    if project_id not in projects:
-        return jsonify({'error': 'Project not found'}), 404
-    
-    del projects[project_id]
+    """Reset the single project_1's content (never actually delete)"""
+    project = projects['project_1']
+    project['content'] = ''
+    project['updated_at'] = time.time()
     return jsonify({'success': True})
 
 if __name__ == '__main__':
